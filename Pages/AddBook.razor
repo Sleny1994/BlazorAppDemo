@@ -1,0 +1,208 @@
+﻿@page "/AddBook"
+<!-- page "/AddBook/{Id}" -->
+@using BlazorAppDemo.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<BookContext> dbFactory
+@inject NavigationManager nvm
+
+<h3>AddBook</h3>
+
+<EditForm Model=@addBook OnSubmit="Save">     <!--OnSubmit/OnValidSubmit/OnInvalidSubmit-->
+    <DataAnnotationsValidator />              <!--调用表单验证组件-->
+    <!--
+    <ValidationSummary />                     <!--表单验证的集合显示组件-->
+
+    <div>@Message</div>
+
+    <p>
+        图书名称：
+    <InputText @bind-Value=addBook.Name></InputText>
+    <ValidationMessage For=@(() => addBook.Name) />      <!--将自定义的ErrorMessage单行显示-->
+    </p>
+
+    <p>
+        作者：
+    <InputText @bind-Value=addBook.Author></InputText>
+    <ValidationMessage For=@(() => addBook.Author) />
+    </p>
+
+    <p>
+        出版日期：
+    <InputDate @bind-Value=addBook.ReleaseDate></InputDate>
+    </p>
+
+    <p>
+        价格：
+    <InputNumber @bind-Value=addBook.Price></InputNumber>
+    </p>
+
+    <p>
+        类型：
+    <InputText @bind-Value=addBook.Type></InputText>
+    <ValidationMessage For=@(() => addBook.Type) />
+    </p>
+
+    <p>
+        总页数：
+    <InputNumber @bind-Value=addBook.TotalPages></InputNumber>
+    </p>
+
+    <p>
+        库存数量：
+    <InputNumber @bind-Value=addBook.StockQty></InputNumber>
+    <ValidationMessage For=@(() => addBook.StockQty) />
+    </p>
+
+    <p>
+        已租数量：
+    <InputNumber @bind-Value=addBook.Qty></InputNumber>
+    </p>
+
+    <input type="submit" class="btn btn-primary" value="Save"/>
+
+    <!--
+        Blazor中拥有自己的一组组件，用于<EditForm>控制做数据绑定，将转换为HTML <input> 元素
+        InputCheckbox            ==>    <input type="checkbox">
+        InputDate<TValue>        ==>    <input type="date">
+        InputFile                ==>    <input type="file">
+        InputNumber<TValue>      ==>    <input type="number">
+        InputRadio<TValue>       ==>    <input type="radio">
+        InputRadioGroup<TValue>  ==>    一组子单选按钮
+        InputSelect<TValue>      ==>    <selec>
+        InputText                ==>    <input>
+        InputTextArea            ==>    <textarea>
+    -->
+</EditForm>
+
+@code {
+    private string Message = string.Empty;
+    private static BookContext _context;
+    // 实例化一个Book类对象，用于<EditForm>控件做参数绑定
+    private Models.Book addBook = new Book();
+
+    protected override Task OnInitializedAsync()
+    {
+        _context = dbFactory.CreateDbContext();
+        return base.OnInitializedAsync();
+    }
+
+    [Parameter]
+    public string Id { get; set; }
+
+    /** 路由跳转
+    protected override void OnParametersSet()
+    {
+        Id = Id ?? "0";    // ??空合运算符，返回第一个不为空的值，如果两个都为空，则返回默认值
+        if(!string.IsNullOrEmpty(Id))
+        {
+            if(Id != "0")
+            {
+                int iId = int.Parse(Id);
+                var book = _context.Book.Find(iId);
+                if(book != null)
+                {
+                    addBook = book;
+                    //Console.WriteLine(book);
+                }
+            }
+        }
+    }
+    **/
+
+    // 传参跳转
+    protected override void OnParametersSet()
+    {
+        var query = new Uri(nvm.Uri).Query;
+        var queryDic = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
+        // {[Id],{3}]} 以字典的形式显示，通过键值ID，可以获取想要的参数值
+
+        /**
+        Id = queryDic["Id"].ToString() ?? "0";  
+
+        if(!string.IsNullOrEmpty(Id))
+        {
+            if(Id != "0")
+            {
+                int iId = int.Parse(Id);
+                var book = _context.Book.Find(iId);
+                if(book != null)
+                {
+                    addBook = book;
+                }
+            }
+        }
+        */
+
+        if(queryDic.Count > 0)
+        {
+            Id = queryDic["Id"].ToString() ?? "0";
+            if(!string.IsNullOrEmpty(Id))
+            {
+                if(Id != "0")
+                {
+                    int iId = int.Parse(Id);
+                    var book = _context.Book.Find(iId);
+                    if(book != null)
+                    {
+                        addBook = book;
+                    }
+                }
+            }
+        }
+    }
+
+    private void Save(EditContext editContext)
+    {
+        bool dataIsValid = editContext.Validate();
+
+        if(!dataIsValid)
+        {
+            Message = "你编辑的图书信息不正确，请修改！";
+            return;
+        }
+
+        if(editContext.Model is not Book addBook)
+        {
+            Message = "你编辑的不是图书信息！";
+            return;
+        }
+
+        /**
+        // OnValidSubmit = "ValidSubmitInfo"
+        private void ValidSubmitInfo(EditContext editContext)
+        {
+            if (editContext.Model is  Book addBook)
+            {
+            Message = "你编辑的不是图书信息，校验通过。正在保存。"        
+            }
+        }
+
+        // OnInvalidSubmit = "InvalidSubmitInfo"
+        private void InvalidSubmitInfo(EditContext editContext)
+        {
+            if (editContext.Model is  Book addBook)
+            {
+            Message = "你编辑的图书信息校验不通过，请修改。";
+            }
+        } 
+        **/
+
+        if(string.IsNullOrEmpty(Id) || Id == "0")
+        {
+            _context.Add(editContext.Model);
+        }
+
+        int cnt = _context.SaveChanges();
+        //Console.WriteLine("输出SaveChanges的结果：" + cnt);
+        if(cnt > 0)  // cnt = 1
+        {
+            Message = "图书信息保存成功！";
+            // 保存后自动跳转至图书列表页
+            nvm.NavigateTo("BookIndex");
+        }
+        else
+        {
+            Message = "图书信息保存失败！";
+        }
+    }
+}

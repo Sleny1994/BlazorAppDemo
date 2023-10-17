@@ -1,0 +1,95 @@
+﻿@page "/FileUpload1"
+@using BlazorAppDemo.Models;
+@using BlazorAppDemo.Utils
+@using Microsoft.AspNetCore.Mvc.ModelBinding
+@using Microsoft.EntityFrameworkCore
+
+@inject IWebHostEnvironment Environ
+@inject IDbContextFactory<BookContext> dbFactory
+
+<h3>多文件上传示例</h3>
+<p>
+    <label>
+        提示信息：@Message
+    </label>
+</p>
+
+<p>
+    <label>
+        上传文件最大可以为：<input type="number" @bind="maxFileSize"/>字节
+    </label>
+</p>
+
+<p>
+    <label>
+        一次可上传：<input type="number" @bind="maxAllowedFiles"/>个文件
+    </label>
+</p>
+
+<p>
+    <label>
+        选择上传文件：<InputFile OnChange="@LoadFiles" multiple />
+    </label>
+</p>
+
+<BlazorAppDemo.Pages.Descri.UpFileInfoList @ref="upfileList"></BlazorAppDemo.Pages.Descri.UpFileInfoList>
+
+@if(isLoading)
+{
+    <p>文件上传中......</p>
+}
+else
+{
+    <ul>
+        @foreach(var file in loadedFiles)
+        {
+            <li>
+                <ul>
+                    <li>文件名：@file.Name</li>
+                    <li>最后修改时间：@file.LastModified.ToString()</li>
+                    <li>文件大小(byte)：@file.Size</li>
+                    <li>文件类型：@file.ContentType</li>
+                </ul>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 1024 * 18;
+    private int maxAllowedFiles = 2;
+    private bool isLoading;
+    private string Message = string.Empty;
+
+    private BlazorAppDemo.Pages.Descri.UpFileInfoList upfileList;
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        loadedFiles.Clear();
+        foreach(var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                ModelStateDictionary modelState = new ModelStateDictionary();
+                loadedFiles.Add(file);
+
+                string result = await FileHelpers.ProcessFormFile(file, modelState, Environ, (int)maxFileSize);
+
+                if(string.IsNullOrEmpty(result))
+                {
+                    Message = "上传成功！";
+                }else
+                {
+                    Message = "上传失败！";
+                }
+            }
+            catch(Exception ex)
+            {
+                Message = ex.Message;
+            }
+        }
+        isLoading = false;
+    }
+}

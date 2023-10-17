@@ -1,0 +1,163 @@
+﻿@page "/BookIndex"
+@using BlazorAppDemo.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+<!--注入数据库上下文-->
+@inject IDbContextFactory<BookContext> dbFactory
+@inject NavigationManager nvm
+
+<PageTitle>图书列表</PageTitle>
+<h3>图书列表</h3>
+<EditForm Model=@books>
+    <div class="input-group mb-3"> 
+        <div class="input-group-prepend">
+            <span class="input-group-text" for="inputGroupSelectAuthor">作者</span>
+        </div>
+
+        <InputSelect @bind-Value=Author id="inputGroupSelectAuthor" class="custom-select">
+            <option value="">请选择作者</option>
+            @foreach(var item in Authors)
+            {
+                <option value=@item.Text>@item.Text</option>
+            }
+        </InputSelect>
+
+        <div class="input-group-prepend">
+            <span class="input-group-text" id="inputGroup-sizing-default">图书名称</span>
+        </div>
+
+        <InputText @bind-Value=Name class="form-control" aria-describedby="inputGroup-sizing-default"></InputText>
+        <ValidationMessage For="@(() => Name)"/>
+            <button id="search" class="btn btn-outline-secondary" @onclick="Query">查询</button>
+    </div>
+</EditForm>
+
+<table class="table-responsive" width="90%">
+    <tr>
+        <!--
+        <td>编号</td>
+        -->
+        <!-- 使用a标签添加超链接，NameSort/PriceSort/DateSort作为参数，使用按钮点击将参数传递给Sort方法-->
+        <td><a class="nav-link active" role="button" aria-pressed="true" @onclick="@(e => Sort(e, @NameSort))">书名</a></td>
+        <td>作者</td>
+        <td><a class="nav-link active" role="button" aria-pressed="true" @onclick="@(e => Sort(e, @PriceSort))">价格</a></td>
+        <td><a class="nav-link active" role="button" aria-pressed="true" @onclick="@(e => Sort(e, @DateSort))">出版日期</a></td>
+        <td>库存数量</td>
+        <td>租借数量</td>
+        <td>操作</td>
+    </tr>
+
+    @foreach (var item in books)
+    {
+        <tr>
+            <!--<td>item.ID</td>-->
+            <td>@item.Name</td>
+            <td>@item.Author</td>
+            <td>@item.Price</td>
+            <td>@item.ReleaseDate.ToShortDateString()</td>
+            <td>@item.StockQty</td>
+            <td>@item.Qty</td>
+            <!--使用传递参数的方式跳转页面-->
+            <td><a href="/AddBook?Id=@item.ID">编辑</a>
+                <button id="edit" class="btn btn-primary" @onclick="@(e => EditBook(e, item.ID))">修改</button>    
+                <!-- 将Lambda表达式作为委托事件处理程序，在事件处定义一个小型内联函数-->
+            </td>
+            <!-- 使用路由的方式跳转页面
+            <td><a href="/AddBook/@item.ID">编辑</a></td>
+            -->
+        </tr>
+    }
+</table>
+
+@code {
+    private static BookContext _context;
+    private List<Book> books = new List<Book>();
+    // 添加书籍名称属性和作者名称属性
+    private SelectList Authors;
+    public string Name{ get; set; }
+    public string Author{ get; set; }
+    // 排序变量
+    public string NameSort { get; set; }
+    public string DateSort { get; set; }
+    public string PriceSort { get; set; }
+
+    // 重写OnInitializedAsync方法，在组件呈现时，去查询数据库中Book表的数据
+    // OnInitializedAsync：在组件准备好启动时从呈现树中的父级接收其初始参数时调用的方法
+    // 如果要执行异步操作并希望组件在操作完成时刷新，请重写此方法
+    protected override async Task OnInitializedAsync()
+    {
+        _context = dbFactory.CreateDbContext();
+        books = _context.Book.ToList();
+        BindAuthor();
+        await base.OnInitializedAsync();
+    }
+
+    public void EditBook(MouseEventArgs e, int Id)
+    {
+        nvm.NavigateTo("/AddBook?Id=" + Id.ToString());
+    }
+
+    public void BindAuthor()
+    {
+        IQueryable<string> AuthorQuery = from m in _context.Book
+                                         orderby m.Author
+                                         select m.Author;
+        Authors = new SelectList(AuthorQuery.Distinct().ToList());
+    }
+
+    // 查询方法
+    public void Query()
+    {
+        // 创建LINQ查询用于选择书籍
+        var qryBooks = from m in _context.Book
+                       select m;
+        if(!String.IsNullOrEmpty(Name))
+        {
+            qryBooks = qryBooks.Where(s => s.Name.Contains(Name.Trim()));
+            // s => s.Name.Contains() 这段代码是Lambda表达式。Lambda在基于方法的 LINQ 查询中用作标准查询运算符方法的参数
+            // 如 Where 方法或 Contains（前面的代码中所使用的）。
+            // 在对 LINQ 查询进行定义或通过调用方法（如 Where、Contains 或 OrderBy）进行修改后，此查询语句不会被立即执行，会延迟执行。 
+            // 这意味着表达式的计算会延迟，直到循环访问其实现的值或者调用 ToListAsync 方法。
+        }
+        if(!String.IsNullOrEmpty(Author))
+        {
+            qryBooks = qryBooks.Where(x => x.Author == Author);
+        }
+        books = qryBooks.ToList();
+    }
+
+    public void Sort(MouseEventArgs e, string sortOrder)
+    {
+        var qryBooks = from m in _context.Book
+                       select m;
+
+        // 排序 _desc代表升序，默认排序为升序
+        NameSort = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+        DateSort = sortOrder == "Date" ? "date_desc" : "Date";
+        PriceSort = sortOrder == "Price" ? "price_desc" : "Price";
+
+        switch(sortOrder)
+        {
+            case "name_desc":
+                qryBooks = qryBooks.OrderByDescending(s => s.Name);
+                break;
+            case "Date":
+                qryBooks = qryBooks.OrderBy(s => s.ReleaseDate);
+                break;
+            case "date_desc":
+                qryBooks = qryBooks.OrderByDescending(s => s.ReleaseDate);
+                break;
+            case "price_desc":
+                qryBooks = qryBooks.OrderByDescending(s => s.Price);
+                break;
+            case "Price":
+                qryBooks = qryBooks.OrderBy(s => s.Price);
+                break;
+            default:
+                qryBooks = qryBooks.OrderBy(s => s.Name);
+                break;
+        }
+        books = qryBooks.ToList();
+    }
+}
