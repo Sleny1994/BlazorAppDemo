@@ -1,0 +1,93 @@
+﻿@page "/Descri/UpFileInfoList"
+@using BlazorAppDemo.Models
+@using BlazorAppDemo.Utils
+@using Microsoft.EntityFrameworkCore
+
+@inject IDbContextFactory<BookContext> dbFactory
+@inject IJSRuntime JsRuntime
+
+<h3>已上传文件列表</h3>
+
+<table class="table" width="99%">
+    <thead>
+        <tr>
+            <th></th>
+            <th>
+                @HtmlHelper.GetDisplayName(fileDesc, m => m.Name)
+            </th>
+            <th>
+                @HtmlHelper.GetDisplayName(fileDesc, m => m.NewName)
+            </th>
+            <th class="text-center">
+                @HtmlHelper.GetDisplayName(fileDesc, m => m.UploadDateTime)
+            </th>
+            <th class="text-center">
+                @HtmlHelper.GetDisplayName(fileDesc, m => m.FileSize)
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var item in fileDescs)
+        {
+            <tr>
+                <td>
+                    <button id="delete" class="btn btn-primary" @onclick="@(async e => await ShowConfirmMsg(e ,@item.ID))">删除</button>
+                </td>
+                <td>
+                    @item.Name
+                </td>
+                <td>
+                    @item.NewName
+                </td>
+                <td class="text-center">
+                    @item.UploadDateTime
+                </td>
+                <td class="text-center">
+                    @item.FileSize
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private static BookContext _context;
+
+    private List<FileDescribe> fileDescs = new List<FileDescribe>();
+    private FileDescribe fileDesc = new FileDescribe();
+
+    [Parameter]
+    public EventCallback RefterData { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        BindData();
+        await base.OnInitializedAsync();
+    }
+
+    public void BindData()
+    {
+        _context = dbFactory.CreateDbContext();
+        fileDescs = _context.FileDescribe.ToList();        
+    }
+
+    public void DeleteFile(MouseEventArgs e, int Id)
+    {
+        //List<int> listId = new();
+        //listId.Add(Id);
+
+        var entity = _context.Find<FileDescribe>(Id);
+        _context.Remove<FileDescribe>(entity);
+        _context.SaveChangesAsync();
+    }
+
+    public async Task ShowConfirmMsg(MouseEventArgs e, int Id)
+    {
+        if(await JsRuntime.InvokeAsync<bool>("confirm",$"是否确认删除当前文件？"))
+        {
+            DeleteFile(e, Id);
+
+            await RefterData.InvokeAsync();
+        }
+    }
+}
