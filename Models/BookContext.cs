@@ -10,5 +10,6 @@ namespace BlazorAppDemo.Models
         }
         public DbSet<Book> Book { get; set; }
         public DbSet<FileDescribe> FileDescribe { get; set; } 
+        public DbSet<UserInfo> UserInfo { get; set; }
     }
 }

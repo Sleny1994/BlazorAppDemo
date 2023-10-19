@@ -1,6 +1,8 @@
+using BlazorAppDemo.Auth;
 using BlazorAppDemo.Data;
 using BlazorAppDemo.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +13,10 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddDbContextFactory<BookContext>(opt => opt.UseSqlServer(ConfigHelper.Configuration["ConnectionStrings:BookContext"]));
+
+// ×¢ÈëImitateAuthStateProvider
+builder.Services.AddScoped<ImitateAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(implementationFactory => implementationFactory.GetRequiredService<ImitateAuthStateProvider>());
 
 var app = builder.Build();
 

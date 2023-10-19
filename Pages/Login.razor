@@ -1,0 +1,65 @@
+﻿@page "/Login"
+@using BlazorAppDemo.Models;
+@using BlazorAppDemo.Utils;
+@using BlazorAppDemo.Auth;
+
+@layout LoginLayout
+@inject NavigationManager nvm
+@inject ImitateAuthStateProvider AuthStateProvider;
+
+<div class="card align-items-center">
+    <div class="card-body my-2">
+        <h3>Login</h3>
+        <hr />
+        <EditForm Model="loginModel" OnValidSubmit="SubmitHandler" OnInvalidSubmit="InvalidHandler">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="userName">@HtmlHelper.GetDisplayName(loginModel, m => m.UserName)</label>
+                <InputText @bind-Value="loginModel.UserName" class="form-control" id="userName" />
+                <ValidationMessage For="() => loginModel.UserName" />
+            </div>
+            <div class="form-gourp">
+                <label for="pwd">@HtmlHelper.GetDisplayName(loginModel, m => m.Password)</label>
+                <InputPassword @bind-Value="loginModel.Password" class="form-control" id="pwd"/>
+                <ValidationMessage For="() => loginModel.Password" />
+            </div>
+            <span class="form-control-plaintext"></span>
+            <div class="form-group row">
+                <div class="col-sm-10">
+                    <button class="btn btn-primary">登录</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private UserInfo loginModel = new UserInfo();
+    bool isAuthLoading = false;
+
+    private void SubmitHandler()
+    {
+        Console.WriteLine($"用户名：{loginModel.UserName},密码：{loginModel.Password}");
+        isAuthLoading = true;
+        try
+        {
+            AuthStateProvider.Login(new UserInfo() { UserName = loginModel.UserName, Password = loginModel.Password });
+            nvm.NavigateTo("/Index");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isAuthLoading = false;
+        }
+    }
+   
+    private void InvalidHandler()
+    {
+        Console.WriteLine($"用户名：{loginModel.UserName},密码：{loginModel.Password}");
+        nvm.NavigateTo("/Login");
+    }
+}
